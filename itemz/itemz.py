@@ -1,4 +1,5 @@
 from glob import glob
+import hashlib
 import inspect
 import json
 import logging
@@ -7,8 +8,6 @@ import os
 import subprocess
 import sys
 import time
-import urllib.parse
-
 
 import psutil
 from selenium.common.exceptions import NoSuchElementException
@@ -20,7 +19,8 @@ from browser import Browser
 FEEDER_URLS = {}
 BROWSER_ID = 'chrome'
 MAX_LOG_FILE_SIZE = 1000 * 1024
-RUN_DELTA = 4 * 3600
+RUN_DELTA = 2 * 3600
+FORCE_RUN_DELTA = 4 * 3600
 NAME = os.path.splitext(os.path.basename(os.path.realpath(__file__)))[0]
 WORK_PATH = os.path.join(os.path.expanduser('~'), f'.{NAME}')
 ITEM_HISTORY_PATH = os.path.join(os.path.dirname(
@@ -66,6 +66,15 @@ def is_idle():
     if not res:
         logger.warning('not idle')
     return res
+
+
+def must_run(last_run_ts):
+    now_ts = time.time()
+    if now_ts > last_run_ts + FORCE_RUN_DELTA:
+        return True
+    if now_ts > last_run_ts + RUN_DELTA and is_idle():
+        return True
+    return False
 
 
 def get_file_mtime(x):
@@ -122,7 +131,7 @@ class ItemHistory:
                 self.items.update(items)
 
     def _get_dirname(self, url):
-        return urllib.parse.quote(url, safe='')
+        return hashlib.md5(url.encode('utf-8')).hexdigest()
 
     def _load_file_items(self, file):
         try:
@@ -187,9 +196,6 @@ class ItemFetcher:
     def __init__(self):
         self.feeders = self._list_feeders()
 
-    def _must_run(self):
-        return time.time() > self.run_file.get_ts() + RUN_DELTA and is_idle()
-
     def _list_feeders(self):
         res = {}
         module = sys.modules[__name__]
@@ -200,10 +206,13 @@ class ItemFetcher:
         return res
 
     def _notify_new_items(self, items):
-        logger.debug(to_json(items))
         names = [n for n, _ in sorted(items.items(), key=lambda x: x[1])]
-        for name in names[-10:]:
-            Notifier().send(title=f'{NAME}', body=name)
+        logger.info(f'new items:\n{to_json(names)}')
+        if len(names) > 10:
+            Notifier().send(title=f'{NAME}', body=', '.join(names))
+        else:
+            for name in names:
+                Notifier().send(title=f'{NAME}', body=name)
 
     def _fetch_url_items(self, feeder, url):
         ih = ItemHistory(url)
@@ -227,7 +236,7 @@ class ItemFetcher:
             feeder.quit()
 
     def run(self):
-        if not self._must_run():
+        if not must_run(self.run_file.get_ts()):
             return
         try:
             for feeder_id, urls in FEEDER_URLS.items():
