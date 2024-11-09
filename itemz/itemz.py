@@ -156,6 +156,7 @@ class ItemHistory:
         file = os.path.join(self.path, f'{int(time.time() * 1000)}.json')
         with open(file, 'w') as fd:
             fd.write(to_json(new_items))
+        logger.info(f'created items file {file} for {self.url}')
 
 
 class Https1337xto(Browser):
@@ -207,7 +208,6 @@ class ItemFetcher:
 
     def _notify_new_items(self, items):
         names = [n for n, _ in sorted(items.items(), key=lambda x: x[1])]
-        logger.info(f'new items:\n{to_json(names)}')
         if len(names) > 10:
             Notifier().send(title=f'{NAME}', body=', '.join(names))
         else:
@@ -238,6 +238,7 @@ class ItemFetcher:
     def run(self):
         if not must_run(self.run_file.get_ts()):
             return
+        start_ts = time.time()
         try:
             for feeder_id, urls in FEEDER_URLS.items():
                 try:
@@ -248,6 +249,7 @@ class ItemFetcher:
                         body=f'failed to process {feeder_id}')
         finally:
             self.run_file.touch()
+        logger.info(f'processed in {time.time() - start_ts:.02f} seconds')
 
 
 def main():
