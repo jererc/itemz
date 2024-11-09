@@ -181,7 +181,7 @@ class Https1337xto(Browser):
         return items
 
 
-class ItemGenerator:
+class ItemFetcher:
     run_file = RunFile(os.path.join(WORK_PATH, f'{NAME}.run'))
 
     def __init__(self):
@@ -242,7 +242,7 @@ class ItemGenerator:
 
 
 def main():
-    ItemGenerator().run()
+    ItemFetcher().run()
 
 
 if __name__ == '__main__':
