@@ -227,8 +227,8 @@ class ItemGenerator:
             feeder.quit()
 
     def run(self):
-        # if not self._must_run():
-        #     return
+        if not self._must_run():
+            return
         try:
             for feeder_id, urls in FEEDER_URLS.items():
                 try:
