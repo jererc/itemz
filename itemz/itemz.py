@@ -1,30 +1,29 @@
+import argparse
 from glob import glob
 import hashlib
 import inspect
 import json
 import logging
-from logging.handlers import RotatingFileHandler
 import os
-import subprocess
 import sys
 import time
 
-import psutil
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
 from browser import Browser
+from service import Daemon, Notifier, Task, setup_logging
 
 
 FEEDER_URLS = {}
 BROWSER_ID = 'chrome'
-MAX_LOG_FILE_SIZE = 1000 * 1024
 RUN_DELTA = 2 * 3600
 FORCE_RUN_DELTA = 4 * 3600
 NAME = os.path.splitext(os.path.basename(os.path.realpath(__file__)))[0]
 WORK_PATH = os.path.join(os.path.expanduser('~'), f'.{NAME}')
 ITEM_HISTORY_PATH = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), 'items')
+NOTIF_BATCH_ITEMS = 10
 
 try:
     from user_settings import *
@@ -37,88 +36,13 @@ def makedirs(x):
         os.makedirs(x)
 
 
-def setup_logging(logger, path):
-    logging.basicConfig(level=logging.DEBUG)
-    formatter = logging.Formatter(
-        '%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
-    if sys.stdout and not sys.stdout.isatty():
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        stdout_handler.setFormatter(formatter)
-        stdout_handler.setLevel(logging.DEBUG)
-        logger.addHandler(stdout_handler)
-    makedirs(path)
-    file_handler = RotatingFileHandler(
-        os.path.join(path, f'{NAME}.log'),
-        mode='a', maxBytes=MAX_LOG_FILE_SIZE, backupCount=0,
-        encoding='utf-8', delay=0)
-    file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.INFO)
-    logger.addHandler(file_handler)
-
-
 logger = logging.getLogger(__name__)
 makedirs(WORK_PATH)
-setup_logging(logger, WORK_PATH)
-
-
-def is_idle():
-    res = psutil.cpu_percent(interval=1) < 5
-    if not res:
-        logger.warning('not idle')
-    return res
-
-
-def must_run(last_run_ts):
-    now_ts = time.time()
-    if now_ts > last_run_ts + FORCE_RUN_DELTA:
-        return True
-    if now_ts > last_run_ts + RUN_DELTA and is_idle():
-        return True
-    return False
-
-
-def get_file_mtime(x):
-    return os.stat(x).st_mtime
+setup_logging(logger, path=WORK_PATH, name=NAME)
 
 
 def to_json(x):
     return json.dumps(x, indent=4, sort_keys=True)
-
-
-class RunFile:
-    def __init__(self, file):
-        self.file = file
-
-    def get_ts(self, default=0):
-        if not os.path.exists(self.file):
-            return default
-        return get_file_mtime(self.file)
-
-    def touch(self):
-        with open(self.file, 'w'):
-            pass
-
-
-class Notifier:
-    def _send_nt(self, title, body, on_click=None):
-        from win11toast import notify
-        notify(title=title, body=body, on_click=on_click)
-
-    def _send_posix(self, title, body, on_click=None):
-        env = os.environ.copy()
-        env['DISPLAY'] = ':0'
-        env['DBUS_SESSION_BUS_ADDRESS'] = \
-            f'unix:path=/run/user/{os.getuid()}/bus'
-        subprocess.check_call(['notify-send', title, body], env=env)
-
-    def send(self, *args, **kwargs):
-        try:
-            {
-                'nt': self._send_nt,
-                'posix': self._send_posix,
-            }[os.name](*args, **kwargs)
-        except Exception:
-            logger.exception('failed to send notification')
 
 
 class ItemHistory:
@@ -192,8 +116,6 @@ class Https1337xto(Browser):
 
 
 class ItemFetcher:
-    run_file = RunFile(os.path.join(WORK_PATH, f'{NAME}.run'))
-
     def __init__(self):
         self.feeders = self._list_feeders()
 
@@ -208,7 +130,7 @@ class ItemFetcher:
 
     def _notify_new_items(self, items):
         names = [n for n, _ in sorted(items.items(), key=lambda x: x[1])]
-        if len(names) > 10:
+        if len(names) > NOTIF_BATCH_ITEMS:
             Notifier().send(title=f'{NAME}', body=', '.join(names))
         else:
             for name in names:
@@ -236,24 +158,50 @@ class ItemFetcher:
             feeder.quit()
 
     def run(self):
-        if not must_run(self.run_file.get_ts()):
-            return
         start_ts = time.time()
-        try:
-            for feeder_id, urls in FEEDER_URLS.items():
-                try:
-                    self._fetch_items(feeder_id, urls)
-                except Exception:
-                    logger.exception(f'failed to process {feeder_id}')
-                    Notifier().send(title=f'{NAME}',
-                        body=f'failed to process {feeder_id}')
-        finally:
-            self.run_file.touch()
+        logger.debug('fetching items...')
+        for feeder_id, urls in FEEDER_URLS.items():
+            try:
+                self._fetch_items(feeder_id, urls)
+            except Exception:
+                logger.exception(f'failed to process {feeder_id}')
+                Notifier().send(title=f'{NAME}',
+                    body=f'failed to process {feeder_id}')
         logger.info(f'processed in {time.time() - start_ts:.02f} seconds')
 
 
-def main():
+def fetch_items():
     ItemFetcher().run()
+
+
+def _parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--daemon', action='store_true')
+    parser.add_argument('--task', action='store_true')
+    return parser.parse_args()
+
+
+def main():
+    args = _parse_args()
+    if args.daemon:
+        Daemon(
+            callable=fetch_items,
+            work_path=WORK_PATH,
+            run_delta=RUN_DELTA,
+            force_run_delta=FORCE_RUN_DELTA,
+            run_file_path=os.path.join(WORK_PATH, 'daemon.run'),
+            loop_delay=60,
+        ).run()
+    elif args.task:
+        Task(
+            callable=fetch_items,
+            work_path=WORK_PATH,
+            run_delta=RUN_DELTA,
+            force_run_delta=FORCE_RUN_DELTA,
+            run_file_path=os.path.join(WORK_PATH, 'task.run'),
+        ).run()
+    else:
+        fetch_items()
 
 
 if __name__ == '__main__':

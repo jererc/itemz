@@ -98,11 +98,12 @@ class Bootstrapper:
         ])
 
     def run(self):
-        cmd = f'{SVC_PY_PATH} {SCRIPT_PATH}'
         if os.name == 'nt':
-            self._setup_win_task(task_name=NAME, cmd=cmd)
+            self._setup_win_task(task_name=NAME,
+                cmd=f'{SVC_PY_PATH} {SCRIPT_PATH} --daemon')
         else:
-            self._setup_linux_crontab(cmd=cmd)
+            self._setup_linux_crontab(
+                cmd=f'{SVC_PY_PATH} {SCRIPT_PATH} --task')
 
 
 def main():
