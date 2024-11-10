@@ -1,4 +1,5 @@
 import argparse
+from functools import reduce
 from glob import glob
 import hashlib
 import inspect
@@ -9,7 +10,7 @@ import re
 import shutil
 import sys
 import time
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote_plus
 
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -52,26 +53,32 @@ def to_json(x):
     return json.dumps(x, indent=4, sort_keys=True)
 
 
+def split_into_batches(items, batch_size):
+    return [items[i:i + batch_size]
+        for i in range(0, len(items), batch_size)]
+
+
 def clean_item(item):
     res = re.sub(r'[\(][^\(]*$|[\[][^\[]*$', '', item).strip()
     return res or item
 
 
-def shorten_text(text, max_length=50):
-    if len(text) <= max_length:
-        return text
-    limit = (max_length - 3) // 2
-    return f'{text[:limit]}...{text[-limit:]}'
+class URLIdGenerator:
+    def __init__(self, urls):
+        self.url_tokens = {u: self._get_tokens(u) for u in urls}
 
+    def _get_tokens(self, url):
+        parsed = urlparse(unquote_plus(url))
+        words = re.findall(r'\b\w+\b', f'{parsed.path} {parsed.query}')
+        return [r for r in words if len(r) > 1]
 
-def shorten_url(url):
-    parts = urlparse(url)
-    return f'{parts.netloc}{shorten_text(parts.path, 30)}'
-
-
-def split_into_batches(items, batch_size):
-    return [items[i:i + batch_size]
-        for i in range(0, len(items), batch_size)]
+    def shorten(self, url):
+        tokens = self._get_tokens(url)
+        other_tokens = set(reduce(lambda x, y: x + y,
+            [v for k, v in self.url_tokens.items() if k != url]))
+        if other_tokens:
+            tokens = [r for r in tokens if r not in other_tokens]
+        return '-'.join(tokens)
 
 
 class ItemStorage:
@@ -180,28 +187,29 @@ class ItemCollector:
                 res[obj.id] = obj
         return res
 
-    def _notify_new_items(self, url, items):
-        title = f'{NAME} @{shorten_url(url)}'
+    def _notify_new_items(self, url_id, items):
+        title = f'{NAME} {url_id}'
         names = [clean_item(n) for n, _ in sorted(items.items(),
             key=lambda x: x[1])]
         for batch in split_into_batches(names, NOTIF_BATCH_SIZE):
             Notifier().send(title=title, body=f'{", ".join(batch)}')
 
-    def _parse_url(self, parser, url):
+    def _parse_url(self, parser, url, url_gen):
         ih = ItemStorage(url)
         all_items = parser.parse(url)
         new_items = {k: v for k, v in all_items.items() if k not in ih.items}
         if new_items:
-            self._notify_new_items(url, new_items)
+            self._notify_new_items(url_gen.shorten(url), new_items)
             ih.save(all_items, new_items)
 
     def _parse_urls(self, parser_id, urls):
         parser = self.parsers[parser_id]()
         try:
+            url_gen = URLIdGenerator(urls)
             for url in urls:
                 logger.debug(f'parsing {url}')
                 try:
-                    self._parse_url(parser, url)
+                    self._parse_url(parser, url, url_gen)
                 except Exception:
                     logger.exception(f'failed to process {url}')
                     Notifier().send(title=f'{NAME}',

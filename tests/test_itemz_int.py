@@ -55,14 +55,17 @@ class CleanItemTestCase(unittest.TestCase):
 
 class CleanURLTestCase(unittest.TestCase):
     def test_1(self):
-        for url in [
-                'https://1337x.to/user/FitGirl/',
-                'https://1337x.to/user/DODI/',
-                'https://1337x.to/user/KaOsKrew/',
-                'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
-                'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
-                ]:
-            print(itemz.shorten_url(url))
+        urls = [
+            ('https://1337x.to/user/FitGirl/', 'FitGirl'),
+            ('https://1337x.to/user/DODI/', 'DODI'),
+            ('https://1337x.to/user/KaOsKrew/', 'KaOsKrew'),
+            ('https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/', 'monster-hunter'),
+            ('https://1337x.to/sort-search/battlefield%20repack/time/desc/1/', 'battlefield'),
+        ]
+        url_gen = itemz.URLIdGenerator([r for r, _ in urls])
+        res = [(r, url_gen.shorten(r)) for r, _ in urls]
+        pprint(res)
+        self.assertEqual(res, urls)
 
 
 class BatchTestCase(unittest.TestCase):
