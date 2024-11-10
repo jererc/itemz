@@ -13,8 +13,8 @@ import time
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
-from browser import Browser
 from svcutils import Daemon, Notifier, Task, get_file_mtime, setup_logging
+from webutils import Browser
 
 
 FEEDER_URLS = {}
