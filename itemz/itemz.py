@@ -13,7 +13,7 @@ import time
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
-from svcutils import Daemon, Notifier, Task, get_file_mtime, setup_logging
+from svcutils import Notifier, Service, get_file_mtime, setup_logging
 from webutils import Browser
 
 
@@ -218,7 +218,7 @@ def _parse_args():
 def main():
     args = _parse_args()
     if args.daemon:
-        Daemon(
+        Service(
             callable=fetch_items,
             work_path=WORK_PATH,
             run_delta=RUN_DELTA,
@@ -226,12 +226,12 @@ def main():
             loop_delay=60,
         ).run()
     elif args.task:
-        Task(
+        Service(
             callable=fetch_items,
             work_path=WORK_PATH,
             run_delta=RUN_DELTA,
             force_run_delta=FORCE_RUN_DELTA,
-        ).run()
+        ).run_once()
     else:
         fetch_items()
 
