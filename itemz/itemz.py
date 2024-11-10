@@ -74,11 +74,12 @@ class URLIdGenerator:
 
     def shorten(self, url):
         tokens = self._get_tokens(url)
-        other_tokens = set(reduce(lambda x, y: x + y,
-            [v for k, v in self.url_tokens.items() if k != url]))
-        if other_tokens:
-            tokens = [r for r in tokens if r not in other_tokens]
-        return '-'.join(tokens)
+        other_tokens = [v for k, v in self.url_tokens.items() if k != url]
+        if not other_tokens:
+            return None
+        other_tokens = set(reduce(lambda x, y: x + y, other_tokens))
+        tokens = [r for r in tokens if r not in other_tokens]
+        return '-'.join(tokens) if tokens else None
 
 
 class ItemStorage:
@@ -199,7 +200,8 @@ class ItemCollector:
         all_items = parser.parse(url)
         new_items = {k: v for k, v in all_items.items() if k not in ih.items}
         if new_items:
-            self._notify_new_items(url_gen.shorten(url), new_items)
+            url_id = url_gen.shorten(url) or parser.id
+            self._notify_new_items(url_id, new_items)
             ih.save(all_items, new_items)
 
     def _parse_urls(self, parser_id, urls):

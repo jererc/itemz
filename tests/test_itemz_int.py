@@ -53,7 +53,7 @@ class CleanItemTestCase(unittest.TestCase):
         self.assertEqual(itemz.clean_item(item), '[X] L.A. Noire')
 
 
-class CleanURLTestCase(unittest.TestCase):
+class URLIdTestCase(unittest.TestCase):
     def test_1(self):
         urls = [
             ('https://1337x.to/user/FitGirl/', 'FitGirl'),
@@ -66,6 +66,11 @@ class CleanURLTestCase(unittest.TestCase):
         res = [(r, url_gen.shorten(r)) for r, _ in urls]
         pprint(res)
         self.assertEqual(res, urls)
+
+    def test_2(self):
+        url = 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/'
+        url_gen = itemz.URLIdGenerator([url])
+        self.assertEqual(url_gen.shorten(url), None)
 
 
 class BatchTestCase(unittest.TestCase):
