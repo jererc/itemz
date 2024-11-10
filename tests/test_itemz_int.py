@@ -53,6 +53,20 @@ class CleanItemTestCase(unittest.TestCase):
         self.assertEqual(itemz.clean_item(item), '[X] L.A. Noire')
 
 
+class CleanURLTestCase(unittest.TestCase):
+    def test_1(self):
+        for url in [
+                'https://1337x.to/user/FitGirl/',
+                'https://1337x.to/user/DODI/',
+                'https://1337x.to/user/KaOsKrew/',
+                'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
+                'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
+                'https://1337x.to/sort-search/call%20of%20duty%20repack/time/desc/1/',
+                ]:
+            print(itemz.shorten_url(url))
+
+
+
 class BatchTestCase(unittest.TestCase):
     def test_1(self):
         items = list(range(7))
@@ -66,14 +80,14 @@ class ItemzTestCase(unittest.TestCase):
         makedirs(user_settings.WORK_PATH)
 
     def test_1(self):
-        itemz.FEEDER_URLS = {
+        itemz.URLS = {
             '1337x.to': [
-                'https://1337x.to/user/FitGirl/',
+                # 'https://1337x.to/user/FitGirl/',
                 # 'https://1337x.to/user/DODI/',
                 # 'https://1337x.to/user/KaOsKrew/',
-                'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
+                # 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
                 # 'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
-                # 'https://1337x.to/sort-search/call%20of%20duty%20repack/time/desc/1/',
+                'https://1337x.to/sort-search/call%20of%20duty%20repack/time/desc/1/',
             ],
         }
-        itemz.fetch_items()
+        itemz.collect_items()

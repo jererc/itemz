@@ -9,6 +9,7 @@ import re
 import shutil
 import sys
 import time
+from urllib.parse import urlparse
 
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -17,7 +18,7 @@ from svcutils import Notifier, Service, get_file_mtime, setup_logging
 from webutils import Browser
 
 
-FEEDER_URLS = {}
+URLS = {}
 BROWSER_ID = 'chrome'
 RUN_DELTA = 2 * 3600
 FORCE_RUN_DELTA = 4 * 3600
@@ -54,6 +55,18 @@ def to_json(x):
 def clean_item(item):
     res = re.sub(r'[\(][^\(]*$|[\[][^\[]*$', '', item).strip()
     return res or item
+
+
+def shorten_text(text, max_length=50):
+    if len(text) <= max_length:
+        return text
+    limit = (max_length - 3) // 2
+    return f'{text[:limit]}...{text[-limit:]}'
+
+
+def shorten_url(url):
+    parts = urlparse(url)
+    return f'{parts.netloc}{shorten_text(parts.path, 30)}'
 
 
 def split_into_batches(items, batch_size):
@@ -115,7 +128,14 @@ class ItemStorage:
         logger.info(f'created items file {file} for {self.url}')
 
 
-class Https1337xto(Browser):
+class Parser:
+    id = None
+
+    def parse(self, url):
+        raise NotImplementedError()
+
+
+class Https1337xtoParser(Parser, Browser):
     id = '1337x.to'
 
     def __init__(self):
@@ -138,7 +158,7 @@ class Https1337xto(Browser):
     def _get_name(self, text):
         return text.splitlines()[0].strip()
 
-    def fetch(self, url):
+    def parse(self, url):
         items = {}
         now_ts = int(time.time())
         for index, el in enumerate(self._wait_for_elements(url)):
@@ -147,11 +167,11 @@ class Https1337xto(Browser):
         return items
 
 
-class ItemFetcher:
+class ItemCollector:
     def __init__(self):
-        self.feeders = self._list_feeders()
+        self.parsers = self._list_parsers()
 
-    def _list_feeders(self):
+    def _list_parsers(self):
         res = {}
         module = sys.modules[__name__]
         for name, obj in inspect.getmembers(module, inspect.isclass):
@@ -160,52 +180,52 @@ class ItemFetcher:
                 res[obj.id] = obj
         return res
 
-    def _notify_new_items(self, feeder, items):
-        title = f'{NAME} @{feeder.id}'
+    def _notify_new_items(self, url, items):
+        title = f'{NAME} @{shorten_url(url)}'
         names = [clean_item(n) for n, _ in sorted(items.items(),
             key=lambda x: x[1])]
         for batch in split_into_batches(names, NOTIF_BATCH_SIZE):
             Notifier().send(title=title, body=f'{", ".join(batch)}')
 
-    def _fetch_url_items(self, feeder, url):
+    def _parse_url(self, parser, url):
         ih = ItemStorage(url)
-        all_items = feeder.fetch(url)
+        all_items = parser.parse(url)
         new_items = {k: v for k, v in all_items.items() if k not in ih.items}
         if new_items:
-            self._notify_new_items(feeder, new_items)
+            self._notify_new_items(url, new_items)
             ih.save(all_items, new_items)
 
-    def _fetch_items(self, feeder_id, urls):
-        feeder = self.feeders[feeder_id]()
+    def _parse_urls(self, parser_id, urls):
+        parser = self.parsers[parser_id]()
         try:
             for url in urls:
-                logger.debug(f'fetching items from {url}')
+                logger.debug(f'parsing {url}')
                 try:
-                    self._fetch_url_items(feeder, url)
+                    self._parse_url(parser, url)
                 except Exception:
                     logger.exception(f'failed to process {url}')
                     Notifier().send(title=f'{NAME}',
                         body=f'failed to process {url}')
         finally:
-            feeder.quit()
+            parser.quit()
 
     def run(self):
         start_ts = time.time()
         all_urls = set()
-        for feeder_id, urls in FEEDER_URLS.items():
+        for parser_id, urls in URLS.items():
             all_urls.update(set(urls))
             try:
-                self._fetch_items(feeder_id, urls)
+                self._parse_urls(parser_id, urls)
             except Exception:
-                logger.exception(f'failed to process {feeder_id}')
+                logger.exception(f'failed to process {parser_id}')
                 Notifier().send(title=f'{NAME}',
-                    body=f'failed to process {feeder_id}')
+                    body=f'failed to process {parser_id}')
         ItemStorage.cleanup(all_urls)
         logger.info(f'processed in {time.time() - start_ts:.02f} seconds')
 
 
-def fetch_items():
-    ItemFetcher().run()
+def collect_items():
+    ItemCollector().run()
 
 
 def _parse_args():
@@ -219,7 +239,7 @@ def main():
     args = _parse_args()
     if args.daemon:
         Service(
-            callable=fetch_items,
+            callable=collect_items,
             work_path=WORK_PATH,
             run_delta=RUN_DELTA,
             force_run_delta=FORCE_RUN_DELTA,
@@ -227,13 +247,13 @@ def main():
         ).run()
     elif args.task:
         Service(
-            callable=fetch_items,
+            callable=collect_items,
             work_path=WORK_PATH,
             run_delta=RUN_DELTA,
             force_run_delta=FORCE_RUN_DELTA,
         ).run_once()
     else:
-        fetch_items()
+        collect_items()
 
 
 if __name__ == '__main__':
