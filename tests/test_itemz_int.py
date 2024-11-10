@@ -61,10 +61,8 @@ class CleanURLTestCase(unittest.TestCase):
                 'https://1337x.to/user/KaOsKrew/',
                 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
                 'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
-                'https://1337x.to/sort-search/call%20of%20duty%20repack/time/desc/1/',
                 ]:
             print(itemz.shorten_url(url))
-
 
 
 class BatchTestCase(unittest.TestCase):
@@ -82,12 +80,11 @@ class ItemzTestCase(unittest.TestCase):
     def test_1(self):
         itemz.URLS = {
             '1337x.to': [
-                # 'https://1337x.to/user/FitGirl/',
-                # 'https://1337x.to/user/DODI/',
-                # 'https://1337x.to/user/KaOsKrew/',
-                # 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
-                # 'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
-                'https://1337x.to/sort-search/call%20of%20duty%20repack/time/desc/1/',
+                'https://1337x.to/user/FitGirl/',
+                'https://1337x.to/user/DODI/',
+                'https://1337x.to/user/KaOsKrew/',
+                'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
+                'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
             ],
         }
         itemz.collect_items()
