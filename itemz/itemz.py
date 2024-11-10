@@ -63,25 +63,6 @@ def clean_item(item):
     return res or item
 
 
-class URLIdGenerator:
-    def __init__(self, urls):
-        self.url_tokens = {u: self._get_tokens(u) for u in urls}
-
-    def _get_tokens(self, url):
-        parsed = urlparse(unquote_plus(url))
-        words = re.findall(r'\b\w+\b', f'{parsed.path} {parsed.query}')
-        return [r for r in words if len(r) > 1]
-
-    def shorten(self, url):
-        tokens = self._get_tokens(url)
-        other_tokens = [v for k, v in self.url_tokens.items() if k != url]
-        if not other_tokens:
-            return None
-        other_tokens = set(reduce(lambda x, y: x + y, other_tokens))
-        tokens = [r for r in tokens if r not in other_tokens]
-        return '-'.join(tokens) if tokens else None
-
-
 class ItemStorage:
     base_path = ITEM_STORAGE_PATH
 
@@ -134,6 +115,25 @@ class ItemStorage:
         with open(file, 'w') as fd:
             fd.write(to_json(new_items))
         logger.info(f'created items file {file} for {self.url}')
+
+
+class URLIdGenerator:
+    def __init__(self, urls):
+        self.url_tokens = {u: self._get_tokens(u) for u in urls}
+
+    def _get_tokens(self, url):
+        parsed = urlparse(unquote_plus(url))
+        words = re.findall(r'\b\w+\b', f'{parsed.path} {parsed.query}')
+        return [r for r in words if len(r) > 1]
+
+    def shorten(self, url):
+        tokens = self._get_tokens(url)
+        other_tokens = [v for k, v in self.url_tokens.items() if k != url]
+        if not other_tokens:
+            return None
+        other_tokens = set(reduce(lambda x, y: x + y, other_tokens))
+        tokens = [r for r in tokens if r not in other_tokens]
+        return '-'.join(tokens) if tokens else None
 
 
 class Parser:
