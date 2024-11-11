@@ -23,6 +23,7 @@ URLS = {}
 BROWSER_ID = 'chrome'
 RUN_DELTA = 2 * 3600
 FORCE_RUN_DELTA = 4 * 3600
+MIN_ONLINE_TIME = 300
 NAME = os.path.splitext(os.path.basename(os.path.realpath(__file__)))[0]
 WORK_PATH = os.path.join(os.path.expanduser('~'), f'.{NAME}')
 ITEM_STORAGE_PATH = os.path.join(os.path.dirname(
@@ -247,21 +248,18 @@ def _parse_args():
 
 def main():
     args = _parse_args()
+    service = Service(
+        callable=collect_items,
+        work_path=WORK_PATH,
+        run_delta=RUN_DELTA,
+        force_run_delta=FORCE_RUN_DELTA,
+        min_online_time=MIN_ONLINE_TIME,
+        loop_delay=60,
+    )
     if args.daemon:
-        Service(
-            callable=collect_items,
-            work_path=WORK_PATH,
-            run_delta=RUN_DELTA,
-            force_run_delta=FORCE_RUN_DELTA,
-            loop_delay=60,
-        ).run()
+        service.run()
     elif args.task:
-        Service(
-            callable=collect_items,
-            work_path=WORK_PATH,
-            run_delta=RUN_DELTA,
-            force_run_delta=FORCE_RUN_DELTA,
-        ).run_once()
+        service.run_once()
     else:
         collect_items()
 
