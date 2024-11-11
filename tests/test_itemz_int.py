@@ -56,11 +56,16 @@ class CleanItemTestCase(unittest.TestCase):
 class URLIdTestCase(unittest.TestCase):
     def test_1(self):
         urls = [
-            ('https://1337x.to/user/FitGirl/', 'FitGirl'),
-            ('https://1337x.to/user/DODI/', 'DODI'),
-            ('https://1337x.to/user/KaOsKrew/', 'KaOsKrew'),
-            ('https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/', 'monster-hunter'),
-            ('https://1337x.to/sort-search/battlefield%20repack/time/desc/1/', 'battlefield'),
+            ('https://1337x.to/user/FitGirl/',
+                '1337x.to FitGirl'),
+            ('https://1337x.to/user/DODI/',
+                '1337x.to DODI'),
+            ('https://1337x.to/user/KaOsKrew/',
+                '1337x.to KaOsKrew'),
+            ('https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
+                '1337x.to monster hunter'),
+            ('https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
+                '1337x.to battlefield'),
         ]
         url_gen = itemz.URLIdGenerator([r for r, _ in urls])
         res = [(r, url_gen.shorten(r)) for r, _ in urls]
@@ -68,9 +73,21 @@ class URLIdTestCase(unittest.TestCase):
         self.assertEqual(res, urls)
 
     def test_2(self):
+        urls = [
+            ('https://1337x.to/user/FitGirl/',
+                '1337x.to user FitGirl'),
+            ('https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
+                '1337x.to sort search battlefield repack time desc'),
+        ]
+        url_gen = itemz.URLIdGenerator([r for r, _ in urls])
+        res = [(r, url_gen.shorten(r)) for r, _ in urls]
+        pprint(res)
+        self.assertEqual(res, urls)
+
+    def test_3(self):
         url = 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/'
         url_gen = itemz.URLIdGenerator([url])
-        self.assertEqual(url_gen.shorten(url), None)
+        self.assertEqual(url_gen.shorten(url), '1337x.to')
 
 
 class BatchTestCase(unittest.TestCase):

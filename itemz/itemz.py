@@ -127,12 +127,13 @@ class URLIdGenerator:
         return [r for r in words if len(r) > 1]
 
     def shorten(self, url):
-        other_tokens = [v for k, v in self.url_tokens.items() if k != url]
-        if not other_tokens:
-            return None
-        other_tokens = set(reduce(lambda x, y: x + y, other_tokens))
-        tokens = [r for r in self._get_tokens(url) if r not in other_tokens]
-        return '-'.join(tokens) if tokens else None
+        tokens = [v for k, v in self.url_tokens.items() if k != url]
+        if tokens:
+            tokens = set(reduce(lambda x, y: x + y, tokens))
+            tokens = [r for r in self._get_tokens(url) if r not in tokens]
+        else:
+            tokens = []
+        return ' '.join([urlparse(url).netloc] + tokens)
 
 
 class Parser:
