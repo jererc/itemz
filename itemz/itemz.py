@@ -253,7 +253,8 @@ def main():
         work_path=WORK_PATH,
         run_delta=RUN_DELTA,
         force_run_delta=FORCE_RUN_DELTA,
-        min_online_time=MIN_ONLINE_TIME,
+        min_running_time=MIN_ONLINE_TIME,
+        requires_online=True,
         loop_delay=60,
     )
     if args.daemon:
