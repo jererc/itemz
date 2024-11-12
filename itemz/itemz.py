@@ -28,7 +28,7 @@ NAME = os.path.splitext(os.path.basename(os.path.realpath(__file__)))[0]
 WORK_PATH = os.path.join(os.path.expanduser('~'), f'.{NAME}')
 ITEM_STORAGE_PATH = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), 'items')
-NOTIF_BATCH_SIZE = 5
+MAX_NOTIF_PER_URL = 5
 STORAGE_RETENTION_DELTA = 7 * 24 * 3600
 
 try:
@@ -52,11 +52,6 @@ logging.getLogger('urllib3').setLevel(logging.INFO)
 
 def to_json(x):
     return json.dumps(x, indent=4, sort_keys=True)
-
-
-def split_into_batches(items, batch_size):
-    return [items[i:i + batch_size]
-        for i in range(0, len(items), batch_size)]
 
 
 def clean_item(item):
@@ -185,7 +180,7 @@ class ItemCollector:
         module = sys.modules[__name__]
         for name, obj in inspect.getmembers(module, inspect.isclass):
             if obj.__module__ == module.__name__ \
-                    and issubclass(obj, Browser) and obj.id:
+                    and issubclass(obj, Parser) and obj.id:
                 res[obj.id] = obj
         return res
 
@@ -193,8 +188,14 @@ class ItemCollector:
         title = f'{NAME} {url_id}'
         names = [clean_item(n) for n, _ in sorted(items.items(),
             key=lambda x: x[1])]
-        for batch in split_into_batches(names, NOTIF_BATCH_SIZE):
-            Notifier().send(title=title, body=f'{", ".join(batch)}')
+        logger.info(f'new items for {url_id}:\n{to_json(names)}')
+        latest_names = names[-MAX_NOTIF_PER_URL:]
+        older_names = names[:-MAX_NOTIF_PER_URL]
+        if older_names:
+            Notifier().send(title=title,
+                body=f'{", ".join(reversed(older_names))}')
+        for name in latest_names:
+            Notifier().send(title=title, body=name)
 
     def _parse_url(self, parser, url, url_gen):
         ih = ItemStorage(url)

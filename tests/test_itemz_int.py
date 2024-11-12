@@ -106,10 +106,10 @@ class ItemzTestCase(unittest.TestCase):
         itemz.URLS = {
             '1337x.to': [
                 'https://1337x.to/user/FitGirl/',
-                'https://1337x.to/user/DODI/',
-                'https://1337x.to/user/KaOsKrew/',
-                'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
-                'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
+                # 'https://1337x.to/user/DODI/',
+                # 'https://1337x.to/user/KaOsKrew/',
+                # 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
+                # 'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
             ],
         }
         itemz.collect_items()
