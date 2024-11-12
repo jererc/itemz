@@ -11,6 +11,7 @@ import shutil
 import sys
 import time
 from urllib.parse import urlparse, unquote_plus
+from uuid import uuid4
 
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -28,7 +29,7 @@ NAME = os.path.splitext(os.path.basename(os.path.realpath(__file__)))[0]
 WORK_PATH = os.path.join(os.path.expanduser('~'), f'.{NAME}')
 ITEM_STORAGE_PATH = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), 'items')
-MAX_NOTIF_PER_URL = 5
+MAX_NOTIF_PER_URL = 4
 STORAGE_RETENTION_DELTA = 7 * 24 * 3600
 
 try:
@@ -66,7 +67,7 @@ class ItemStorage:
         self.url = url
         self.path = os.path.join(self.base_path, self._get_dirname(url))
         self.items = {}
-        for file, items in self._iterate_files_items():
+        for file, items in self._iterate_file_and_items():
             if items:
                 self.items.update(items)
 
@@ -95,19 +96,22 @@ class ItemStorage:
             logger.exception(f'failed to load file {file}')
             return None
 
-    def _iterate_files_items(self):
+    def _iterate_file_and_items(self):
         for file in glob(os.path.join(self.path, '*.json')):
             yield file, self._load_file_items(file)
 
+    def _get_filename(self):
+        return os.path.join(self.path, f'{uuid4().hex}.json')
+
     def save(self, all_items, new_items):
         all_item_keys = set(all_items.keys())
-        for file, items in self._iterate_files_items():
+        for file, items in self._iterate_file_and_items():
             if items and not set(items.keys()) & all_item_keys:
                 os.remove(file)
                 logger.debug(f'removed old file {file}')
 
         makedirs(self.path)
-        file = os.path.join(self.path, f'{int(time.time() * 1000)}.json')
+        file = self._get_filename()
         with open(file, 'w') as fd:
             fd.write(to_json(new_items))
         logger.info(f'created items file {file} for {self.url}')
@@ -189,8 +193,9 @@ class ItemCollector:
         names = [clean_item(n) for n, _ in sorted(items.items(),
             key=lambda x: x[1])]
         logger.info(f'new items for {url_id}:\n{to_json(names)}')
-        latest_names = names[-MAX_NOTIF_PER_URL:]
-        older_names = names[:-MAX_NOTIF_PER_URL]
+        max_latest = MAX_NOTIF_PER_URL - 1
+        latest_names = names[-max_latest:]
+        older_names = names[:-max_latest]
         if older_names:
             Notifier().send(title=title,
                 body=f'{", ".join(reversed(older_names))}')
@@ -198,13 +203,14 @@ class ItemCollector:
             Notifier().send(title=title, body=name)
 
     def _parse_url(self, parser, url, url_gen):
-        ih = ItemStorage(url)
+        item_storage = ItemStorage(url)
         all_items = parser.parse(url)
-        new_items = {k: v for k, v in all_items.items() if k not in ih.items}
+        new_items = {k: v for k, v in all_items.items()
+            if k not in item_storage.items}
         if new_items:
             url_id = url_gen.shorten(url) or parser.id
             self._notify_new_items(url_id, new_items)
-            ih.save(all_items, new_items)
+            item_storage.save(all_items, new_items)
 
     def _parse_urls(self, parser_id, urls):
         parser = self.parsers[parser_id]()
