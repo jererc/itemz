@@ -114,7 +114,6 @@ class ItemStorage:
         file = self._get_filename()
         with open(file, 'w') as fd:
             fd.write(to_json(new_items))
-        logger.info(f'created items file {file} for {self.url}')
 
 
 class URLIdGenerator:
