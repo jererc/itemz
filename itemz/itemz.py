@@ -46,7 +46,6 @@ def makedirs(x):
 
 makedirs(WORK_PATH)
 logger = get_logger(path=WORK_PATH, name=NAME)
-
 logging.getLogger('selenium').setLevel(logging.INFO)
 logging.getLogger('urllib3').setLevel(logging.INFO)
 
