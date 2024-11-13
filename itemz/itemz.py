@@ -140,13 +140,16 @@ class Parser:
     def parse(self, url):
         raise NotImplementedError()
 
+    def quit(self):
+        pass
 
-class Https1337xtoParser(Parser, Browser):
+
+class Https1337xtoParser(Parser):
     id = '1337x.to'
 
     def __init__(self):
-        super().__init__(browser_id=BROWSER_ID, headless=True,
-            page_load_strategy='none')
+        self.driver = Browser(browser_id=BROWSER_ID, headless=True,
+            page_load_strategy='none').driver
 
     def _wait_for_elements(self, url, poll_frequency=.5, timeout=10):
         self.driver.get(url)
@@ -171,6 +174,9 @@ class Https1337xtoParser(Parser, Browser):
             tds = el.find_elements(By.XPATH, './/td')
             items[self._get_name(tds[0].text)] = now_ts - index
         return items
+
+    def quit(self):
+        self.driver.quit()
 
 
 class ItemCollector:

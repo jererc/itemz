@@ -1,6 +1,5 @@
 import logging
 import os
-from pprint import pprint
 import shutil
 import sys
 import unittest
