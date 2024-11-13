@@ -16,7 +16,7 @@ from uuid import uuid4
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
-from svcutils import Notifier, Service, get_file_mtime, logger, setup_logging
+from svcutils import Notifier, Service, get_file_mtime, get_logger
 from webutils import Browser
 
 
@@ -45,7 +45,7 @@ def makedirs(x):
 
 
 makedirs(WORK_PATH)
-setup_logging(logger, path=WORK_PATH, name=NAME)
+logger = get_logger(path=WORK_PATH, name=NAME)
 
 logging.getLogger('selenium').setLevel(logging.INFO)
 logging.getLogger('urllib3').setLevel(logging.INFO)
