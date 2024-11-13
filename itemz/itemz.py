@@ -24,7 +24,7 @@ URLS = {}
 BROWSER_ID = 'chrome'
 RUN_DELTA = 2 * 3600
 FORCE_RUN_DELTA = 4 * 3600
-MIN_RUNNING_TIME = 300
+MIN_RUNTIME = 300
 MAX_CPU_PERCENT = 10
 NAME = os.path.splitext(os.path.basename(os.path.realpath(__file__)))[0]
 WORK_PATH = os.path.join(os.path.expanduser('~'), f'.{NAME}')
@@ -258,7 +258,7 @@ def main():
         work_path=WORK_PATH,
         run_delta=RUN_DELTA,
         force_run_delta=FORCE_RUN_DELTA,
-        min_running_time=MIN_RUNNING_TIME,
+        min_runtime=MIN_RUNTIME,
         requires_online=True,
         max_cpu_percent=MAX_CPU_PERCENT,
         loop_delay=60,
