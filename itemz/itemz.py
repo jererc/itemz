@@ -251,7 +251,6 @@ def _parse_args():
     return parser.parse_args()
 
 
-
 def main():
     args = _parse_args()
     service = Service(
