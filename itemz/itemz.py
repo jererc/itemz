@@ -31,6 +31,7 @@ WORK_PATH = os.path.join(os.path.expanduser('~'), f'.{NAME}')
 ITEM_STORAGE_PATH = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), 'items')
 MAX_NOTIF_PER_URL = 4
+MAX_NOTIF_BODY_SIZE = 500
 STORAGE_RETENTION_DELTA = 7 * 24 * 3600
 
 try:
@@ -55,7 +56,9 @@ def to_json(x):
 
 
 def clean_item(item):
-    res = re.sub(r'[\(][^\(]*$|[\[][^\[]*$', '', item).strip()
+    res = re.sub(r'\(.*?\)', '', item).strip()
+    res = re.sub(r'\[.*?\]', '', res).strip()
+    res = re.sub(r'[\(][^\(]*$|[\[][^\[]*$', '', res).strip()
     return res or item
 
 
@@ -147,8 +150,8 @@ class Parser:
 class Https1337xtoParser(Parser):
     id = '1337x.to'
 
-    def __init__(self):
-        self.driver = Browser(browser_id=BROWSER_ID, headless=True,
+    def __init__(self, headless=True):
+        self.driver = Browser(browser_id=BROWSER_ID, headless=headless,
             page_load_strategy='none').driver
 
     def _has_no_results(self):
@@ -190,8 +193,53 @@ class Https1337xtoParser(Parser):
         self.driver.quit()
 
 
+class RutrackerParser(Parser):
+    id = 'rutracker'
+
+    def __init__(self, headless=True):
+        self.driver = Browser(browser_id=BROWSER_ID, headless=headless,
+            page_load_strategy='none').driver
+
+    def _requires_login(self):
+        try:
+            return self.driver.find_element(By.XPATH,
+                "//input[@type='submit' and @name='login']")
+        except NoSuchElementException:
+            return False
+
+    def _wait_for_elements(self, url, poll_frequency=.5, timeout=10):
+        xpath = "//div[@id='search-results']/table/tbody/tr"
+        xpath = "//div[contains(@class, 't-title')]"
+        self.driver.get(url)
+        end_ts = time.time() + timeout
+        while time.time() < end_ts:
+            try:
+                els = self.driver.find_elements(By.XPATH, xpath)
+                if not els:
+                    raise NoSuchElementException()
+                return els
+            except NoSuchElementException:
+                if self._requires_login():
+                    raise Exception('requires login')
+                time.sleep(poll_frequency)
+        raise Exception('timeout')
+
+    def parse(self, url):
+        items = {}
+        now_ts = int(time.time())
+        for index, el in enumerate(self._wait_for_elements(url)):
+            link = el.find_element(By.XPATH, ".//a")
+            name = link.text.strip()
+            items[name] = now_ts - index
+        return items
+
+    def quit(self):
+        self.driver.quit()
+
+
 class ItemCollector:
-    def __init__(self):
+    def __init__(self, headless=True):
+        self.headless = headless
         self.parsers = self._list_parsers()
 
     def _list_parsers(self):
@@ -204,16 +252,19 @@ class ItemCollector:
         return res
 
     def _notify_new_items(self, url_id, items):
+        logger.info(f'new items for {url_id}:\n'
+            f'{to_json(sorted(items.keys()))}')
         title = f'{NAME} {url_id}'
         names = [clean_item(n) for n, _ in sorted(items.items(),
             key=lambda x: x[1])]
-        logger.info(f'new items for {url_id}:\n{to_json(names)}')
         max_latest = MAX_NOTIF_PER_URL - 1
         latest_names = names[-max_latest:]
         older_names = names[:-max_latest]
         if older_names:
-            Notifier().send(title=title,
-                body=f'{", ".join(reversed(older_names))}')
+            body = ', '.join(reversed(older_names))
+            if len(body) > MAX_NOTIF_BODY_SIZE:
+                body = f'{body[:MAX_NOTIF_BODY_SIZE]}...'
+            Notifier().send(title=title, body=f'{body}')
         for name in latest_names:
             Notifier().send(title=title, body=name)
 
@@ -228,7 +279,7 @@ class ItemCollector:
             item_storage.save(all_items, new_items)
 
     def _parse_urls(self, parser_id, urls):
-        parser = self.parsers[parser_id]()
+        parser = self.parsers[parser_id](headless=self.headless)
         try:
             url_gen = URLIdGenerator(urls)
             for url in urls:
@@ -257,8 +308,8 @@ class ItemCollector:
         logger.info(f'processed in {time.time() - start_ts:.02f} seconds')
 
 
-def collect_items():
-    ItemCollector().run()
+def collect_items(headless=False):
+    ItemCollector(headless=headless).run()
 
 
 def _parse_args():
@@ -285,7 +336,7 @@ def main():
     elif args.task:
         service.run_once()
     else:
-        collect_items()
+        collect_items(headless=False)
 
 
 if __name__ == '__main__':

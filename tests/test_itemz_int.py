@@ -49,3 +49,17 @@ class Https1337xtoTestCase(unittest.TestCase):
             ],
         }
         itemz.collect_items()
+
+
+class RutrackerTestCase(unittest.TestCase):
+    def setUp(self):
+        remove_path(user_settings.WORK_PATH)
+        makedirs(user_settings.WORK_PATH)
+
+    def test_1(self):
+        itemz.URLS = {
+            'rutracker': [
+                'https://rutracker.org/forum/tracker.php?f=557',
+            ],
+        }
+        itemz.collect_items()
