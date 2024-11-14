@@ -33,7 +33,7 @@ class Https1337xtoTestCase(unittest.TestCase):
 
     def test_no_result(self):
         itemz.URLS = {
-            '1337x.to': [
+            '1337x': [
                 'https://1337x.to/search/sfsfsfsdfsd/1/',
             ],
         }
@@ -41,7 +41,7 @@ class Https1337xtoTestCase(unittest.TestCase):
 
     def test_1(self):
         itemz.URLS = {
-            '1337x.to': [
+            '1337x': [
                 'https://1337x.to/user/FitGirl/',
                 # 'https://1337x.to/user/DODI/',
                 # 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',

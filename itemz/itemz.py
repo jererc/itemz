@@ -150,19 +150,23 @@ class Parser:
         pass
 
 
-class Https1337xtoParser(Parser):
-    id = '1337x.to'
-
+class BrowserParser(Parser):
     def __init__(self, headless=True):
         self.headless = headless
         self.driver = Browser(browser_id=BROWSER_ID, headless=headless,
             page_load_strategy='none').driver
 
+    def quit(self):
+        self.driver.quit()
+
+
+class X1337xParser(BrowserParser):
+    id = '1337x'
+
     def _has_no_results(self):
         try:
-            el = self.driver.find_element(By.XPATH,
-                "//p[contains(text(), 'No results were returned.')]")
-            return bool(el)
+            return bool(self.driver.find_element(By.XPATH,
+                "//p[contains(text(), 'No results were returned.')]"))
         except NoSuchElementException:
             return False
 
@@ -193,28 +197,21 @@ class Https1337xtoParser(Parser):
             items[self._get_name(tds[0].text)] = now_ts - index
         return items
 
-    def quit(self):
-        self.driver.quit()
 
-
-class RutrackerParser(Parser):
+class RutrackerParser(BrowserParser):
     id = 'rutracker'
-
-    def __init__(self, headless=True):
-        self.headless = headless
-        self.driver = Browser(browser_id=BROWSER_ID, headless=headless,
-            page_load_strategy='none').driver
 
     def _requires_login(self):
         try:
-            return self.driver.find_element(By.XPATH,
-                "//input[@type='submit' and @name='login']")
+            return bool(self.driver.find_element(By.XPATH,
+                "//input[@type='submit' and @name='login']"))
         except NoSuchElementException:
             return False
 
     def _wait_for_elements(self, url, poll_frequency=.5, timeout=10):
         self.driver.get(url)
         end_ts = time.time() + timeout
+        wait_for_login = False
         while time.time() < end_ts:
             try:
                 els = self.driver.find_elements(By.XPATH,
@@ -223,9 +220,11 @@ class RutrackerParser(Parser):
                     raise NoSuchElementException()
                 return els
             except NoSuchElementException:
-                if self._requires_login():
+                if self._requires_login() and not wait_for_login:
                     if self.headless:
                         raise Exception('requires login')
+                    logger.info('waiting for user login...')
+                    wait_for_login = True
                     end_ts += 120
                 time.sleep(poll_frequency)
         raise Exception('timeout')
@@ -238,9 +237,6 @@ class RutrackerParser(Parser):
             name = link.text.strip()
             items[name] = now_ts - index
         return items
-
-    def quit(self):
-        self.driver.quit()
 
 
 class ItemCollector:
