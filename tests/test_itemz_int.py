@@ -26,17 +26,24 @@ def makedirs(path):
         os.makedirs(path)
 
 
-class ItemzTestCase(unittest.TestCase):
+class Https1337xtoTestCase(unittest.TestCase):
     def setUp(self):
         remove_path(user_settings.WORK_PATH)
         makedirs(user_settings.WORK_PATH)
+
+    def test_no_result(self):
+        itemz.URLS = {
+            '1337x.to': [
+                'https://1337x.to/search/sfsfsfsdfsd/1/',
+            ],
+        }
+        itemz.collect_items()
 
     def test_1(self):
         itemz.URLS = {
             '1337x.to': [
                 'https://1337x.to/user/FitGirl/',
-                'https://1337x.to/user/DODI/',
-                # 'https://1337x.to/user/KaOsKrew/',
+                # 'https://1337x.to/user/DODI/',
                 # 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
                 # 'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
             ],

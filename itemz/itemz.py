@@ -151,6 +151,14 @@ class Https1337xtoParser(Parser):
         self.driver = Browser(browser_id=BROWSER_ID, headless=True,
             page_load_strategy='none').driver
 
+    def _has_no_results(self):
+        try:
+            el = self.driver.find_element(By.XPATH,
+                "//p[contains(text(), 'No results were returned.')]")
+            return bool(el)
+        except NoSuchElementException:
+            return False
+
     def _wait_for_elements(self, url, poll_frequency=.5, timeout=10):
         self.driver.get(url)
         end_ts = time.time() + timeout
@@ -161,6 +169,9 @@ class Https1337xtoParser(Parser):
                     raise NoSuchElementException()
                 return els
             except NoSuchElementException:
+                if self._has_no_results():
+                    logger.debug('no result')
+                    return []
                 time.sleep(poll_frequency)
         raise Exception('timeout')
 
