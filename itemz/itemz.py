@@ -140,6 +140,9 @@ class URLIdGenerator:
 class Parser:
     id = None
 
+    def __init__(self, headless=True):
+        self.headless = headless
+
     def parse(self, url):
         raise NotImplementedError()
 
@@ -151,6 +154,7 @@ class Https1337xtoParser(Parser):
     id = '1337x.to'
 
     def __init__(self, headless=True):
+        self.headless = headless
         self.driver = Browser(browser_id=BROWSER_ID, headless=headless,
             page_load_strategy='none').driver
 
@@ -197,6 +201,7 @@ class RutrackerParser(Parser):
     id = 'rutracker'
 
     def __init__(self, headless=True):
+        self.headless = headless
         self.driver = Browser(browser_id=BROWSER_ID, headless=headless,
             page_load_strategy='none').driver
 
@@ -208,19 +213,20 @@ class RutrackerParser(Parser):
             return False
 
     def _wait_for_elements(self, url, poll_frequency=.5, timeout=10):
-        xpath = "//div[@id='search-results']/table/tbody/tr"
-        xpath = "//div[contains(@class, 't-title')]"
         self.driver.get(url)
         end_ts = time.time() + timeout
         while time.time() < end_ts:
             try:
-                els = self.driver.find_elements(By.XPATH, xpath)
+                els = self.driver.find_elements(By.XPATH,
+                    "//div[contains(@class, 't-title')]")
                 if not els:
                     raise NoSuchElementException()
                 return els
             except NoSuchElementException:
                 if self._requires_login():
-                    raise Exception('requires login')
+                    if self.headless:
+                        raise Exception('requires login')
+                    end_ts += 120
                 time.sleep(poll_frequency)
         raise Exception('timeout')
 
