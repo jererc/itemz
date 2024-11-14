@@ -26,7 +26,7 @@ def makedirs(path):
         os.makedirs(path)
 
 
-class Https1337xtoTestCase(unittest.TestCase):
+class X1337xTestCase(unittest.TestCase):
     def setUp(self):
         remove_path(user_settings.WORK_PATH)
         makedirs(user_settings.WORK_PATH)
