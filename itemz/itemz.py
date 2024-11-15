@@ -275,9 +275,9 @@ class ItemCollector:
         new_items = {k: v for k, v in all_items.items()
             if k not in item_storage.items}
         if new_items:
-            url_id = url_gen.shorten(url) or parser.id
-            logger.info(f'new items for {url_id}:\n'
+            logger.info(f'new items from {url}:\n'
                 f'{to_json(sorted(new_items.keys()))}')
+            url_id = url_gen.shorten(url) or parser.id
             self._notify_new_items(url_id, new_items)
             item_storage.save(all_items, new_items)
 
