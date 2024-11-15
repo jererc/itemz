@@ -17,7 +17,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
 from svcutils import Notifier, Service, get_file_mtime, get_logger
-from webutils import Browser
+from webutils import get_browser_driver
 
 
 URLS = {}
@@ -153,8 +153,8 @@ class Parser:
 class BrowserParser(Parser):
     def __init__(self, headless=True):
         self.headless = headless
-        self.driver = Browser(browser_id=BROWSER_ID, headless=headless,
-            page_load_strategy='none').driver
+        self.driver = get_browser_driver(browser_id=BROWSER_ID,
+            headless=headless, page_load_strategy='none')
 
     def quit(self):
         self.driver.quit()
@@ -166,7 +166,7 @@ class X1337xParser(BrowserParser):
     def _has_no_results(self):
         try:
             return bool(self.driver.find_element(By.XPATH,
-                "//p[contains(text(), 'No results were returned.')]"))
+                '//p[contains(text(), "No results were returned.")]'))
         except NoSuchElementException:
             return False
 
@@ -204,7 +204,7 @@ class RutrackerParser(BrowserParser):
     def _requires_login(self):
         try:
             return bool(self.driver.find_element(By.XPATH,
-                "//input[@type='submit' and @name='login']"))
+                '//input[@type="submit" and @name="login"]'))
         except NoSuchElementException:
             return False
 
@@ -215,7 +215,7 @@ class RutrackerParser(BrowserParser):
         while time.time() < end_ts:
             try:
                 els = self.driver.find_elements(By.XPATH,
-                    "//div[contains(@class, 't-title')]")
+                    '//div[contains(@class, "t-title")]')
                 if not els:
                     raise NoSuchElementException()
                 return els
@@ -233,7 +233,7 @@ class RutrackerParser(BrowserParser):
         items = {}
         now_ts = int(time.time())
         for index, el in enumerate(self._wait_for_elements(url)):
-            link = el.find_element(By.XPATH, ".//a")
+            link = el.find_element(By.XPATH, './/a')
             name = link.text.strip()
             items[name] = now_ts - index
         return items
@@ -254,8 +254,6 @@ class ItemCollector:
         return res
 
     def _notify_new_items(self, url_id, items):
-        logger.info(f'new items for {url_id}:\n'
-            f'{to_json(sorted(items.keys()))}')
         title = f'{NAME} {url_id}'
         names = [clean_item(n) for n, _ in sorted(items.items(),
             key=lambda x: x[1])]
@@ -273,10 +271,13 @@ class ItemCollector:
     def _parse_url(self, parser, url, url_gen):
         item_storage = ItemStorage(url)
         all_items = parser.parse(url)
+        logger.info(f'parsed {len(all_items)} items from {url}')
         new_items = {k: v for k, v in all_items.items()
             if k not in item_storage.items}
         if new_items:
             url_id = url_gen.shorten(url) or parser.id
+            logger.info(f'new items for {url_id}:\n'
+                f'{to_json(sorted(new_items.keys()))}')
             self._notify_new_items(url_id, new_items)
             item_storage.save(all_items, new_items)
 
@@ -318,6 +319,7 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--daemon', action='store_true')
     parser.add_argument('--task', action='store_true')
+    parser.add_argument('--no-headless', action='store_true')
     return parser.parse_args()
 
 
@@ -338,7 +340,7 @@ def main():
     elif args.task:
         service.run_once()
     else:
-        collect_items(headless=False)
+        collect_items(headless=not args.no_headless)
 
 
 if __name__ == '__main__':
