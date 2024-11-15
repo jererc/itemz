@@ -63,3 +63,20 @@ class RutrackerTestCase(unittest.TestCase):
             ],
         }
         itemz.collect_items()
+
+
+class CollectorTestCase(unittest.TestCase):
+    def setUp(self):
+        remove_path(user_settings.WORK_PATH)
+        makedirs(user_settings.WORK_PATH)
+
+    def test_1(self):
+        itemz.URLS = {
+            '1337x': [
+                'https://1337x.to/user/FitGirl/',
+            ],
+            'rutracker': [
+                'https://rutracker.org/forum/tracker.php?f=557',
+            ],
+        }
+        itemz.collect_items()

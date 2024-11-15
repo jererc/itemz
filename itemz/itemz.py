@@ -288,10 +288,10 @@ class ItemCollector:
                 logger.debug(f'parsing {url}')
                 try:
                     self._parse_url(parser, url, url_gen)
-                except Exception:
+                except Exception as exc:
                     logger.exception(f'failed to process {url}')
-                    Notifier().send(title=f'{NAME}',
-                        body=f'failed to process {url}')
+                    Notifier().send(title=f'{NAME} error',
+                        body=f'failed to process {url}: {exc}')
         finally:
             parser.quit()
 
@@ -310,7 +310,7 @@ class ItemCollector:
         logger.info(f'processed in {time.time() - start_ts:.02f} seconds')
 
 
-def collect_items(headless=False):
+def collect_items(headless=True):
     ItemCollector(headless=headless).run()
 
 
