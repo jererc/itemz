@@ -326,7 +326,7 @@ def _parse_args():
 def main():
     args = _parse_args()
     service = Service(
-        callable=collect_items,
+        target=collect_items,
         work_path=WORK_PATH,
         run_delta=RUN_DELTA,
         force_run_delta=FORCE_RUN_DELTA,
