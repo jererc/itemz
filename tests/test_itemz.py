@@ -25,15 +25,15 @@ class CleanItemTestCase(unittest.TestCase):
 
     def test_4(self):
         item = 'L.A. Noire (The Complete Edition) (v2675.1 + All DLCs, ...'
-        self.assertEqual(itemz.clean_item(item), 'L.A. Noire (The Complete Edition)')
+        self.assertEqual(itemz.clean_item(item), 'L.A. Noire')
 
     def test_5(self):
         item = 'L.A. Noire [X] (v2675.1 + All DLCs, MULTi6) [FitGirl Repack]'
-        self.assertEqual(itemz.clean_item(item), 'L.A. Noire [X]')
+        self.assertEqual(itemz.clean_item(item), 'L.A. Noire')
 
     def test_6(self):
         item = '[X] L.A. Noire (v2675.1 + All DLCs, MULTi6) [FitGirl Repack]'
-        self.assertEqual(itemz.clean_item(item), '[X] L.A. Noire')
+        self.assertEqual(itemz.clean_item(item), 'L.A. Noire')
 
 
 class URLIdTestCase(unittest.TestCase):

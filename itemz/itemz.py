@@ -1,4 +1,3 @@
-import argparse
 from functools import reduce
 from glob import glob
 import hashlib
@@ -16,20 +15,14 @@ from uuid import uuid4
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
-from svcutils.service import (Notifier, Service, get_file_mtime, get_logger,
-    load_config)
+from svcutils.service import Notifier, get_file_mtime, get_logger
 from webutils import get_browser_driver
 
 
 BROWSER_ID = 'chrome'
-RUN_DELTA = 2 * 3600
-FORCE_RUN_DELTA = 4 * 3600
-MIN_RUNTIME = 300
-MAX_CPU_PERCENT = 10
 NAME = os.path.splitext(os.path.basename(os.path.realpath(__file__)))[0]
 WORK_PATH = os.path.join(os.path.expanduser('~'), f'.{NAME}')
-ITEM_STORAGE_PATH = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), 'items')
+ITEM_STORAGE_PATH = os.path.join(WORK_PATH, 'items')
 MAX_NOTIF_PER_URL = 4
 MAX_NOTIF_BODY_SIZE = 500
 STORAGE_RETENTION_DELTA = 7 * 24 * 3600
@@ -63,9 +56,8 @@ def clean_item(item):
 
 
 class ItemStorage:
-    base_path = ITEM_STORAGE_PATH
-
-    def __init__(self, url):
+    def __init__(self, base_path, url):
+        self.base_path = base_path
         self.url = url
         self.path = os.path.join(self.base_path, self._get_dirname(url))
         self.items = {}
@@ -78,10 +70,10 @@ class ItemStorage:
         return hashlib.md5(url.encode('utf-8')).hexdigest()
 
     @classmethod
-    def cleanup(cls, all_urls):
+    def cleanup(cls, base_path, all_urls):
         dirnames = {cls._get_dirname(r) for r in all_urls}
         min_ts = time.time() - STORAGE_RETENTION_DELTA
-        for path in glob(os.path.join(cls.base_path, '*')):
+        for path in glob(os.path.join(base_path, '*')):
             if os.path.basename(path) in dirnames:
                 continue
             mtimes = [get_file_mtime(r)
@@ -242,6 +234,7 @@ class RutrackerParser(BrowserParser):
 class ItemCollector:
     def __init__(self, config, headless=True):
         self.config = config
+        self.storage_path = self.config.ITEM_STORAGE_PATH or ITEM_STORAGE_PATH
         self.headless = headless
         self.parsers = self._list_parsers()
 
@@ -270,7 +263,7 @@ class ItemCollector:
             Notifier().send(title=title, body=name)
 
     def _parse_url(self, parser, url, url_gen):
-        item_storage = ItemStorage(url)
+        item_storage = ItemStorage(self.storage_path, url)
         all_items = parser.parse(url)
         logger.info(f'parsed {len(all_items)} items from {url}')
         new_items = {k: v for k, v in all_items.items()
@@ -308,41 +301,9 @@ class ItemCollector:
                 logger.exception(f'failed to process {parser_id}')
                 Notifier().send(title=f'{NAME}',
                     body=f'failed to process {parser_id}')
-        ItemStorage.cleanup(all_urls)
+        ItemStorage.cleanup(self.storage_path, all_urls)
         logger.info(f'processed in {time.time() - start_ts:.02f} seconds')
 
 
-def collect_items(config_file, headless=True):
-    ItemCollector(load_config(config_file), headless=headless).run()
-
-
-# def _parse_args():
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--daemon', action='store_true')
-#     parser.add_argument('--task', action='store_true')
-#     parser.add_argument('--no-headless', action='store_true')
-#     return parser.parse_args()
-
-
-# def main():
-#     args = _parse_args()
-#     service = Service(
-#         target=collect_items,
-#         work_path=WORK_PATH,
-#         run_delta=RUN_DELTA,
-#         force_run_delta=FORCE_RUN_DELTA,
-#         min_runtime=MIN_RUNTIME,
-#         requires_online=True,
-#         max_cpu_percent=MAX_CPU_PERCENT,
-#         loop_delay=60,
-#     )
-#     if args.daemon:
-#         service.run()
-#     elif args.task:
-#         service.run_once()
-#     else:
-#         collect_items(headless=not args.no_headless)
-
-
-# if __name__ == '__main__':
-#     main()
+def collect_items(config):
+    ItemCollector(config).run()

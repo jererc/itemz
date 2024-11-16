@@ -3,6 +3,7 @@ import os
 import shutil
 import sys
 import unittest
+from unittest.mock import Mock
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 REPO_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.insert(0, os.path.join(REPO_PATH, 'itemz'))
@@ -26,57 +27,53 @@ def makedirs(path):
         os.makedirs(path)
 
 
-class X1337xTestCase(unittest.TestCase):
+class BaseTestCase(unittest.TestCase):
     def setUp(self):
         remove_path(user_settings.WORK_PATH)
         makedirs(user_settings.WORK_PATH)
 
+    def _collect_items(self, urls):
+        return itemz.collect_items(Mock(
+            URLS=urls,
+            ITEM_STORAGE_PATH=None,
+        ))
+
+
+class X1337xTestCase(BaseTestCase):
     def test_no_result(self):
-        itemz.URLS = {
+        self._collect_items({
             '1337x': [
                 'https://1337x.to/search/sfsfsfsdfsd/1/',
             ],
-        }
-        itemz.collect_items()
+        })
 
     def test_1(self):
-        itemz.URLS = {
+        self._collect_items({
             '1337x': [
                 'https://1337x.to/user/FitGirl/',
                 # 'https://1337x.to/user/DODI/',
-                # 'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
+                'https://1337x.to/sort-search/monster%20hunter%20repack/time/desc/1/',
                 # 'https://1337x.to/sort-search/battlefield%20repack/time/desc/1/',
             ],
-        }
-        itemz.collect_items()
+        })
 
 
-class RutrackerTestCase(unittest.TestCase):
-    def setUp(self):
-        remove_path(user_settings.WORK_PATH)
-        makedirs(user_settings.WORK_PATH)
-
+class RutrackerTestCase(BaseTestCase):
     def test_1(self):
-        itemz.URLS = {
+        self._collect_items({
             'rutracker': [
                 'https://rutracker.org/forum/tracker.php?f=557',
             ],
-        }
-        itemz.collect_items()
+        })
 
 
-class CollectorTestCase(unittest.TestCase):
-    def setUp(self):
-        remove_path(user_settings.WORK_PATH)
-        makedirs(user_settings.WORK_PATH)
-
+class CollectorTestCase(BaseTestCase):
     def test_1(self):
-        itemz.URLS = {
+        self._collect_items({
             '1337x': [
                 'https://1337x.to/user/FitGirl/',
             ],
             'rutracker': [
                 'https://rutracker.org/forum/tracker.php?f=557',
             ],
-        }
-        itemz.collect_items()
+        })
