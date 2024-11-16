@@ -16,11 +16,11 @@ from uuid import uuid4
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 
-from svcutils import Notifier, Service, get_file_mtime, get_logger
+from svcutils.service import (Notifier, Service, get_file_mtime, get_logger,
+    load_config)
 from webutils import get_browser_driver
 
 
-URLS = {}
 BROWSER_ID = 'chrome'
 RUN_DELTA = 2 * 3600
 FORCE_RUN_DELTA = 4 * 3600
@@ -240,7 +240,8 @@ class RutrackerParser(BrowserParser):
 
 
 class ItemCollector:
-    def __init__(self, headless=True):
+    def __init__(self, config, headless=True):
+        self.config = config
         self.headless = headless
         self.parsers = self._list_parsers()
 
@@ -299,7 +300,7 @@ class ItemCollector:
     def run(self):
         start_ts = time.time()
         all_urls = set()
-        for parser_id, urls in URLS.items():
+        for parser_id, urls in self.config.URLS.items():
             all_urls.update(set(urls))
             try:
                 self._parse_urls(parser_id, urls)
@@ -311,37 +312,37 @@ class ItemCollector:
         logger.info(f'processed in {time.time() - start_ts:.02f} seconds')
 
 
-def collect_items(headless=True):
-    ItemCollector(headless=headless).run()
+def collect_items(config_file, headless=True):
+    ItemCollector(load_config(config_file), headless=headless).run()
 
 
-def _parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--daemon', action='store_true')
-    parser.add_argument('--task', action='store_true')
-    parser.add_argument('--no-headless', action='store_true')
-    return parser.parse_args()
+# def _parse_args():
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('--daemon', action='store_true')
+#     parser.add_argument('--task', action='store_true')
+#     parser.add_argument('--no-headless', action='store_true')
+#     return parser.parse_args()
 
 
-def main():
-    args = _parse_args()
-    service = Service(
-        target=collect_items,
-        work_path=WORK_PATH,
-        run_delta=RUN_DELTA,
-        force_run_delta=FORCE_RUN_DELTA,
-        min_runtime=MIN_RUNTIME,
-        requires_online=True,
-        max_cpu_percent=MAX_CPU_PERCENT,
-        loop_delay=60,
-    )
-    if args.daemon:
-        service.run()
-    elif args.task:
-        service.run_once()
-    else:
-        collect_items(headless=not args.no_headless)
+# def main():
+#     args = _parse_args()
+#     service = Service(
+#         target=collect_items,
+#         work_path=WORK_PATH,
+#         run_delta=RUN_DELTA,
+#         force_run_delta=FORCE_RUN_DELTA,
+#         min_runtime=MIN_RUNTIME,
+#         requires_online=True,
+#         max_cpu_percent=MAX_CPU_PERCENT,
+#         loop_delay=60,
+#     )
+#     if args.daemon:
+#         service.run()
+#     elif args.task:
+#         service.run_once()
+#     else:
+#         collect_items(headless=not args.no_headless)
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
